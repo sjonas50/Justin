@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio</title>
+</head>
+<body>
+    <h1>Portfolio</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in portfolio_data %}
+            <tr>
+                <td>{{ stock.ticker }}</td>
+                <td>{{ stock.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h2>Add Stock</h2>
+    <form action="{{ url_for('add_stock') }}" method="post">
+        <label for="ticker">Ticker:</label>
+        <input type="text" id="ticker" name="ticker" required>
+        
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" required>
+        
+        <input type="hidden" name="name" value="{{ name }}">
+    <input type="hidden" name="age" value="{{ age }}">
+    <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
+    {% for goal in goals %}
+    <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
+    {% endfor %}
+    <input type="hidden" name="target_age" value="{{ target_age }}">
+    <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
+    <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
+    
+    <button type="submit">Add Stock</button>
+</form>
+    
+    <h2>Remove Stock</h2>
+    <form action="{{ url_for('remove_stock') }}" method="post">
+        <label for="ticker">Ticker:</label>
+        <input type="text" id="ticker" name="ticker" required>
+        
+        <input type="hidden" name="name" value="{{ name }}">
+    <input type="hidden" name="age" value="{{ age }}">
+    <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
+    {% for goal in goals %}
+    <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
+    {% endfor %}
+    <input type="hidden" name="target_age" value="{{ target_age }}">
+    <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
+    <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
+    
+    <button type="submit">Remove Stock</button>
+</form>
+    
+    <h2>Generate Suggestions</h2>
+    <form action="{{ url_for('generate_suggestions_route') }}" method="post">
+        <input type="hidden" name="name" value="{{ name }}">
+        <input type="hidden" name="age" value="{{ age }}">
+        <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
+        {% for goal in goals %}
+        <input type="hidden" name="goals[]" value="{{ goal }}">
+        {% endfor %}
+        <input type="hidden" name="target_age" value="{{ target_age }}">
+        <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
+        <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
+        <button type="submit">Generate Suggestions</button>
+    </form>
+</body>
+</html>

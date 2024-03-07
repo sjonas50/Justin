@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Investment Suggestions</title>
+</head>
+<body>
+    <h1>Investment Suggestions</h1>
+    
+    <ul>
+        {% for suggestion in suggestions %}
+        <li>{{ suggestion }}</li>
+        {% endfor %}
+    </ul>
+    
+    <h2>Portfolio Chat</h2>
+    <div id="chat-container">
+        <!-- Chat messages will be displayed here -->
+    </div>
+    
+    <form id="chat-form">
+        <input type="text" id="user-input" name="user_input" placeholder="Ask a question..." required>
+        <button type="submit">Send</button>
+    </form>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Submit the chat form using AJAX
+            $('#chat-form').submit(function(event) {
+                event.preventDefault();
+                var userInput = $('#user-input').val();
+                $.ajax({
+                    url: '/chat',
+                    method: 'POST',
+                    data: { user_input: userInput },
+                    success: function(response) {
+                        // Display the user's message and the generated response
+                        var chatContainer = $('#chat-container');
+                        chatContainer.append('<p><strong>You:</strong> ' + userInput + '</p>');
+                        chatContainer.append('<p><strong>Assistant:</strong> ' + response + '</p>');
+                        $('#user-input').val('');
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <a href="{{ url_for('portfolio') }}">Back to Portfolio</a>
+</body>
+</html>

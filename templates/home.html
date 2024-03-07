@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home</title>
+</head>
+<body>
+    <h1>Welcome to Justins Portfolio Tracker</h1>
+    <p>Start tracking your investment portfolio now!</p>
+    
+    <h2>User Information</h2>
+    <form action="{{ url_for('portfolio') }}" method="post">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+        
+        <label for="age">Age:</label>
+        <input type="number" id="age" name="age" required>
+        
+        <label for="investment_amount">Investment Amount:</label>
+        <input type="number" id="investment_amount" name="investment_amount" required>
+        
+        <h3>Investment Goals</h3>
+        <label for="goal1">Goal 1:</label>
+        <input type="text" id="goal1" name="goal1" required>
+        
+        <label for="goal2">Goal 2:</label>
+        <input type="text" id="goal2" name="goal2" required>
+        
+        <label for="goal3">Goal 3:</label>
+        <input type="text" id="goal3" name="goal3" required>
+
+        <h3>Target Goals</h3>
+        <label for="target_age">Target Age:</label>
+        <input type="number" id="target_age" name="target_age" required>
+        
+        <label for="target_portfolio_value">Target Portfolio Value:</label>
+        <input type="number" id="target_portfolio_value" name="target_portfolio_value" step="0.01" required>
+        
+        <label for="target_dividend_income">Target Dividend Income:</label>
+        <input type="number" id="target_dividend_income" name="target_dividend_income" step="0.01" required>
+        
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
