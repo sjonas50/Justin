@@ -2,6 +2,9 @@ import sqlite3
 import pandas as pd
 from data_preprocessing import create_database_connection
 import anthropic
+import os
+import yfinance as yf
+from portfolio_tracker import Portfolio
 
 def preprocess_data(db_name):
     # Retrieve the preprocessed stock data from the database
@@ -28,8 +31,11 @@ Age: {age}
 Investment Amount: {investment_amount}
 
 Portfolio Data:
-{portfolio_summary}
-
+"""
+    for stock in portfolio_data:
+        prompt += f"Ticker: {stock['ticker']}, Quantity: {stock['quantity']}, Current Price: {stock['current_price']}\n"
+    
+    prompt += f"""
 Investment Goals:
 {goals_summary}
 
@@ -38,15 +44,16 @@ Target Age: {target_age}
 Target Portfolio Value: {target_portfolio_value}
 Target Dividend Income: {target_dividend_income}
 
-Please provide investment suggestions based on the given user information, portfolio data, goals, and target goals, and call the user by name "Justin".
+Please provide investment suggestions based on the given user information, portfolio data (including current stock prices), goals, and target goals.  Always provide investment advice based upon the portfolio data and goals and be thorough and specific, and call the user by name "Justin".
 """
     
     # Make a request to the Claude API
-    client = anthropic.Client()
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    client = anthropic.Client(api_key=api_key)
     response = client.completions.create(
         prompt=f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}",
         stop_sequences=[anthropic.HUMAN_PROMPT],
-        model="claude-v1",
+        model="claude-2.1",
         max_tokens_to_sample=1000,
         temperature=0.7,
     )
@@ -94,23 +101,36 @@ def generate_chat_response(user_input, portfolio_data):
     portfolio_summary = ""
     for stock in portfolio_data:
         portfolio_summary += f"Ticker: {stock['ticker']}, Quantity: {stock['quantity']}\n"
-    
+
+    # Create an instance of the Portfolio class
+    portfolio = Portfolio('stock_database.db')
+
+    # Retrieve the user's portfolio data with live stock prices
+    portfolio_data_with_live_prices = portfolio.get_portfolio_data()
+
+    # Convert portfolio data with live prices to a formatted string
+    portfolio_summary_with_live_prices = ""
+    for stock in portfolio_data_with_live_prices:
+        portfolio_summary_with_live_prices += f"Ticker: {stock['ticker']}, Quantity: {stock['quantity']}, Current Price: {stock['current_price']}\n"
+
     # Prepare the prompt for the Claude API
     prompt = f"""
 User's Portfolio:
-{portfolio_summary}
+{portfolio_summary_with_live_prices}
 
 User's Question: {user_input}
 
-Please provide a response to the user's question based on their portfolio data.  The users name is Justin, please use his name as well.
+Please provide a response to the user's question based on their portfolio data with live stock prices and their goals. The user's name is Justin, please use their name as well.
 """
+
     
     # Make a request to the Claude API
-    client = anthropic.Client()
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    client = anthropic.Client(api_key=api_key)
     response = client.completions.create(
         prompt=f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}",
         stop_sequences=[anthropic.HUMAN_PROMPT],
-        model="claude-v1",
+        model="claude-2.1",
         max_tokens_to_sample=1000,
         temperature=0.7,
     )

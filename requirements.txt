@@ -1,0 +1,5 @@
+anthropic==0.19.1
+Flask==2.2.3
+numpy==1.26.4
+pandas==1.5.3
+yfinance==0.2.37
