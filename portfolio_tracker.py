@@ -50,24 +50,23 @@ class Portfolio:
         for stock in self.stocks:
             ticker = stock['ticker']
             quantity = stock['quantity']
+        
+        # Fetch live stock price using yfinance
+            stock_info = yf.Ticker(ticker).info
+            current_price = stock_info.get('currentPrice', 0)  # Use get() with default value of 0
 
-            # Fetch live stock price using yfinance
-            try:
-                stock_info = yf.Ticker(ticker).info
-                current_price = stock_info.get('currentPrice', 0)  # Use get() with default value of 0
-            except Exception as e:
-                print(f"Error fetching stock data for {ticker}: {str(e)}")
-                current_price = 0  # Assign a default value of 0 in case of an error
-
+            total_value = quantity * current_price
+        
             stock_data = {
                 'ticker': ticker,
                 'quantity': quantity,
-                'current_price': current_price
+                'current_price': current_price,
+                'total_value': total_value
             }
             portfolio_data.append(stock_data)
 
         print(f"Portfolio Data: {portfolio_data}")
-
+    
         return portfolio_data
 
     def calculate_returns(self):

@@ -3,7 +3,90 @@
 <head>
     <title>Justins Investment Portfolio</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        form {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        input[type="text"], input[type="number"] {
+            width: 200px;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        
+        a:hover {
+            background-color: #006080;
+        }
 
+        .stock-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .stock-info-table th, .stock-info-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .stock-info-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
     <h1>Justins Investment Portfolio</h1>
@@ -14,6 +97,7 @@
                 <th>Ticker</th>
                 <th>Quantity</th>
                 <th>Current Price</th>
+                <th>Total Value</th>
             </tr>
         </thead>
         <tbody>
@@ -22,14 +106,71 @@
                 <td>{{ stock.ticker }}</td>
                 <td>{{ stock.quantity }}</td>
                 <td>{{ stock.current_price }}</td>
+                <td>{{ stock.total_value }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <h2>Portfolio Value</h2>
-<button id="calculate-portfolio-value">Calculate Portfolio Value</button>
-<p id="portfolio-value"></p>
+    <button id="calculate-portfolio-value">Calculate Portfolio Value</button>
+    <p id="portfolio-value"></p>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#calculate-portfolio-value').click(function() {
+                $.ajax({
+                    url: '/calculate_portfolio_value',
+                    method: 'GET',
+                    success: function(response) {
+                        $('#portfolio-value').text('Portfolio Value: $' + response.portfolio_value.toFixed(2));
+                    }
+                });
+            });
+        });
+    </script>
+
+<h2>Stock Quote</h2>
+    <form id="stock-quote-form">
+        <label for="quote-ticker">Ticker:</label>
+        <input type="text" id="quote-ticker" name="quote_ticker" required>
+        <button type="submit">Get Quote</button>
+    </form>
+
+    <div id="stock-info-container">
+        <table class="stock-info-table">
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Price</th>
+                    <th>Previous Close</th>
+                    <th>Open</th>
+                    <th>Bid</th>
+                    <th>Ask</th>
+                    <th>Day's Range</th>
+                    <th>52 Week Range</th>
+                    <th>Volume</th>
+                    <th>Avg. Volume</th>
+                    <th>Market Cap</th>
+                    <th>Beta (5Y Monthly)</th>
+                    <th>PE Ratio (TTM)</th>
+                    <th>EPS (TTM)</th>
+                    <th>Earnings Date</th>
+                    <th>Dividend Rate</th>
+                    <th>Forward Dividend & Yield</th>
+                    <th>Ex-Dividend Date</th>
+                    <th>1y Target Est</th>
+                </tr>
+            </thead>
+            <tbody id="stock-info-body">
+                <!-- Stock information will be dynamically added here -->
+            </tbody>
+        </table>
+    </div>
+
+
+<a href="{{ url_for('home') }}">Back to Home</a>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
@@ -43,13 +184,46 @@
                 }
             });
         });
-    });
+
+        // Submit the stock quote form using AJAX
+        $('#stock-quote-form').submit(function(event) {
+                event.preventDefault();
+                var ticker = $('#quote-ticker').val();
+                
+                $.ajax({
+                    url: '/stock_quote',
+                    method: 'POST',
+                    data: { ticker: ticker },
+                    success: function(response) {
+                        var stockInfo = response.stock_info;
+                        var rowHtml = '<tr>' +
+                            '<td>' + stockInfo.ticker + '</td>' +
+                            '<td>' + stockInfo.price + '</td>' +
+                            '<td>' + stockInfo.previous_close + '</td>' +
+                            '<td>' + stockInfo.open_price + '</td>' +
+                            '<td>' + stockInfo.bid + '</td>' +
+                            '<td>' + stockInfo.ask + '</td>' +
+                            '<td>' + stockInfo.day_range + '</td>' +
+                            '<td>' + stockInfo.week_range + '</td>' +
+                            '<td>' + stockInfo.volume + '</td>' +
+                            '<td>' + stockInfo.avg_volume + '</td>' +
+                            '<td>' + stockInfo.market_cap + '</td>' +
+                            '<td>' + stockInfo.beta + '</td>' +
+                            '<td>' + stockInfo.pe_ratio + '</td>' +
+                            '<td>' + stockInfo.eps + '</td>' +
+                            '<td>' + stockInfo.earnings_date + '</td>' +
+                            '<td>' + stockInfo.dividend_rate + '</td>' +
+                            '<td>' + stockInfo.forward_dividend + '</td>' +
+                            '<td>' + stockInfo.ex_dividend_date + '</td>' +
+                            '<td>' + stockInfo.target_est + '</td>' +
+                            '</tr>';
+                        $('#stock-info-body').html(rowHtml);
+                    }
+                });
+            });
+        });
 </script>
 
-<h2>Justins Portfolio Distribution</h2>
-<canvas id="portfolioDistributionChart"></canvas>
-
-    
     <h2>Add Stock</h2>
     <form action="{{ url_for('add_stock') }}" method="post">
         <label for="ticker">Ticker:</label>
@@ -59,36 +233,36 @@
         <input type="number" id="quantity" name="quantity" required>
         
         <input type="hidden" name="name" value="{{ name }}">
-    <input type="hidden" name="age" value="{{ age }}">
-    <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
-    {% for goal in goals %}
-    <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
-    {% endfor %}
-    <input type="hidden" name="target_age" value="{{ target_age }}">
-    <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
-    <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
-    
-    <button type="submit">Add Stock</button>
-</form>
-    
+        <input type="hidden" name="age" value="{{ age }}">
+        <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
+        {% for goal in goals %}
+        <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
+        {% endfor %}
+        <input type="hidden" name="target_age" value="{{ target_age }}">
+        <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
+        <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
+        
+        <button type="submit">Add Stock</button>
+    </form>
+
     <h2>Remove Stock</h2>
     <form action="{{ url_for('remove_stock') }}" method="post">
         <label for="ticker">Ticker:</label>
         <input type="text" id="ticker" name="ticker" required>
         
         <input type="hidden" name="name" value="{{ name }}">
-    <input type="hidden" name="age" value="{{ age }}">
-    <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
-    {% for goal in goals %}
-    <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
-    {% endfor %}
-    <input type="hidden" name="target_age" value="{{ target_age }}">
-    <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
-    <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
-    
-    <button type="submit">Remove Stock</button>
-</form>
-    
+        <input type="hidden" name="age" value="{{ age }}">
+        <input type="hidden" name="investment_amount" value="{{ investment_amount }}">
+        {% for goal in goals %}
+        <input type="hidden" name="goal{{ loop.index }}" value="{{ goal }}">
+        {% endfor %}
+        <input type="hidden" name="target_age" value="{{ target_age }}">
+        <input type="hidden" name="target_portfolio_value" value="{{ target_portfolio_value }}">
+        <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
+        
+        <button type="submit">Remove Stock</button>
+    </form>
+
     <h2>Generate Suggestions</h2>
     <form action="{{ url_for('generate_suggestions_route') }}" method="post">
         <input type="hidden" name="name" value="{{ name }}">
@@ -102,5 +276,7 @@
         <input type="hidden" name="target_dividend_income" value="{{ target_dividend_income }}">
         <button type="submit">Generate Suggestions</button>
     </form>
+
+    <a href="{{ url_for('home') }}">Back to Home</a>
 </body>
 </html>

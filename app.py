@@ -5,6 +5,7 @@ from ml_analysis import generate_chat_response
 from database import save_user_profile
 from database import retrieve_user_profile
 from flask import jsonify
+import yfinance as yf
 
 
 app = Flask(__name__)
@@ -138,6 +139,39 @@ def remove_stock():
                            investment_amount=investment_amount, goals=[goal1, goal2, goal3],
                            target_age=target_age, target_portfolio_value=target_portfolio_value,
                            target_dividend_income=target_dividend_income)
+
+@app.route('/stock_quote', methods=['POST'])
+def stock_quote():
+    ticker = request.form['ticker']
+    
+    # Retrieve stock information from Yahoo Finance
+    stock = yf.Ticker(ticker)
+    info = stock.info
+    
+    # Extract relevant information
+    stock_info = {
+        'ticker': ticker,
+        'price': info['currentPrice'],
+        'previous_close': info['previousClose'],
+        'open_price': info['open'],
+        'bid': info['bid'],
+        'ask': info['ask'],
+        'day_range': f"{info['dayLow']} - {info['dayHigh']}",
+        'week_range': f"{info['fiftyTwoWeekLow']} - {info['fiftyTwoWeekHigh']}",
+        'volume': info['volume'],
+        'avg_volume': info['averageVolume'],
+        'market_cap': info['marketCap'],
+        'beta': info['beta'],
+        'pe_ratio': info['trailingPE'],
+        'eps': info['trailingEps'],
+        'earnings_date': info.get('earningsDate', 'N/A'),
+        'dividend_rate': info.get('dividendRate', 'N/A'),
+        'forward_dividend': info.get('dividendRate', 'N/A'),
+        'ex_dividend_date': info.get('exDividendDate', 'N/A'),
+        'target_est': info.get('targetMeanPrice', 'N/A')
+    }
+    
+    return jsonify(stock_info=stock_info)
 
 @app.route('/generate_suggestions', methods=['POST'])
 def generate_suggestions_route():
