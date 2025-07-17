@@ -3,6 +3,7 @@ import pandas as pd
 from data_retrieval import get_stock_data
 from data_preprocessing import create_database_connection
 import yfinance as yf
+from cache import get_stock_info_cached, get_multiple_stocks_cached
 
 class Portfolio:
     def __init__(self, db_name):
@@ -13,15 +14,24 @@ class Portfolio:
         self.update_portfolio_value()
 
     def add_stock(self, ticker, quantity):
-    # Validate the stock ticker using yfinance
+        from utils import validate_ticker, validate_quantity
+        
+        # Validate inputs
+        valid, ticker = validate_ticker(ticker)
+        if not valid:
+            raise ValueError(ticker)
+        
+        valid, quantity = validate_quantity(quantity)
+        if not valid:
+            raise ValueError(quantity)
+        
+        # Validate the stock ticker using cached info
         try:
-            stock_info = yf.Ticker(ticker).info
+            stock_info = get_stock_info_cached(ticker)
             if 'currentPrice' not in stock_info or stock_info['currentPrice'] is None:
-                print(f"Invalid ticker or missing market price: {ticker}")
-                return
+                raise ValueError(f"Invalid ticker or missing market price: {ticker}")
         except Exception as e:
-            print(f"Error validating ticker {ticker}: {str(e)}")
-            return
+            raise ValueError(f"Error validating ticker {ticker}: {str(e)}")
         
         # Check if the stock is already in the portfolio
         for stock in self.stocks:
@@ -41,33 +51,159 @@ class Portfolio:
         print(f"Added stock: {ticker}, Quantity: {quantity}")
 
     def remove_stock(self, ticker):
+        from utils import validate_ticker
+        
+        # Validate input
+        valid, ticker = validate_ticker(ticker)
+        if not valid:
+            raise ValueError(ticker)
+        
         self.stocks = [stock for stock in self.stocks if stock['ticker'] != ticker]
         self._save_portfolio()
         self.update_portfolio_value()
 
     def get_portfolio_data(self):
         portfolio_data = []
+        
+        # Get all tickers for batch fetching
+        tickers = [stock['ticker'] for stock in self.stocks]
+        
+        # Batch fetch all stock info with caching
+        if tickers:
+            all_stock_info = get_multiple_stocks_cached(tickers)
+        else:
+            all_stock_info = {}
+        
         for stock in self.stocks:
             ticker = stock['ticker']
             quantity = stock['quantity']
         
-        # Fetch live stock price using yfinance
-            stock_info = yf.Ticker(ticker).info
-            current_price = stock_info.get('currentPrice', 0)  # Use get() with default value of 0
-
-            total_value = quantity * current_price
-        
-            stock_data = {
-                'ticker': ticker,
-                'quantity': quantity,
-                'current_price': current_price,
-                'total_value': total_value
-            }
-            portfolio_data.append(stock_data)
+            try:
+                # Get stock info from batch results
+                stock_info = all_stock_info.get(ticker, {})
+                
+                # Get current and historical data
+                current_price = stock_info.get('currentPrice', 0)
+                previous_close = stock_info.get('previousClose', current_price)
+                daily_change = current_price - previous_close
+                daily_change_pct = (daily_change / previous_close * 100) if previous_close > 0 else 0
+                
+                # Get 52-week data
+                week_52_high = stock_info.get('fiftyTwoWeekHigh', 0)
+                week_52_low = stock_info.get('fiftyTwoWeekLow', 0)
+                
+                # Get dividend information
+                dividend_rate = stock_info.get('dividendRate', 0) or 0
+                dividend_yield = stock_info.get('dividendYield', 0) or 0
+                annual_dividend_income = dividend_rate * quantity if dividend_rate else 0
+                
+                # Calculate total value
+                total_value = quantity * current_price
+                
+                # Get company name
+                company_name = stock_info.get('longName', ticker)
+                
+                stock_data = {
+                    'ticker': ticker,
+                    'company_name': company_name,
+                    'quantity': quantity,
+                    'current_price': current_price,
+                    'previous_close': previous_close,
+                    'daily_change': daily_change,
+                    'daily_change_pct': daily_change_pct,
+                    'total_value': total_value,
+                    'week_52_high': week_52_high,
+                    'week_52_low': week_52_low,
+                    'dividend_rate': dividend_rate,
+                    'dividend_yield': dividend_yield * 100 if dividend_yield else 0,  # Convert to percentage
+                    'annual_dividend_income': annual_dividend_income
+                }
+                portfolio_data.append(stock_data)
+                
+            except Exception as e:
+                print(f"Error fetching data for {ticker}: {str(e)}")
+                # Add basic data if detailed fetch fails
+                stock_data = {
+                    'ticker': ticker,
+                    'company_name': ticker,
+                    'quantity': quantity,
+                    'current_price': 0,
+                    'previous_close': 0,
+                    'daily_change': 0,
+                    'daily_change_pct': 0,
+                    'total_value': 0,
+                    'week_52_high': 0,
+                    'week_52_low': 0,
+                    'dividend_rate': 0,
+                    'dividend_yield': 0,
+                    'annual_dividend_income': 0
+                }
+                portfolio_data.append(stock_data)
 
         print(f"Portfolio Data: {portfolio_data}")
     
         return portfolio_data
+    
+    def get_portfolio_summary(self):
+        """Calculate comprehensive portfolio metrics"""
+        portfolio_data = self.get_portfolio_data()
+        
+        if not portfolio_data:
+            return {
+                'total_value': 0,
+                'total_cost': 0,
+                'total_gain_loss': 0,
+                'total_gain_loss_pct': 0,
+                'daily_change': 0,
+                'daily_change_pct': 0,
+                'total_dividend_income': 0,
+                'average_dividend_yield': 0,
+                'diversification': {},
+                'top_performer': None,
+                'worst_performer': None
+            }
+        
+        # Calculate totals
+        total_value = sum(stock['total_value'] for stock in portfolio_data)
+        total_dividend_income = sum(stock['annual_dividend_income'] for stock in portfolio_data)
+        daily_change = sum(stock['daily_change'] * stock['quantity'] for stock in portfolio_data)
+        
+        # Calculate weighted average dividend yield
+        weighted_dividend_yield = 0
+        if total_value > 0:
+            for stock in portfolio_data:
+                weight = stock['total_value'] / total_value
+                weighted_dividend_yield += stock['dividend_yield'] * weight
+        
+        # Calculate daily change percentage
+        total_previous_value = sum(stock['previous_close'] * stock['quantity'] for stock in portfolio_data)
+        daily_change_pct = (daily_change / total_previous_value * 100) if total_previous_value > 0 else 0
+        
+        # Calculate diversification
+        diversification = {}
+        for stock in portfolio_data:
+            if total_value > 0:
+                diversification[stock['ticker']] = {
+                    'percentage': (stock['total_value'] / total_value) * 100,
+                    'value': stock['total_value']
+                }
+        
+        # Find top and worst performers by daily change percentage
+        performers = sorted(portfolio_data, key=lambda x: x['daily_change_pct'], reverse=True)
+        top_performer = performers[0] if performers and performers[0]['daily_change_pct'] > 0 else None
+        worst_performer = performers[-1] if performers and performers[-1]['daily_change_pct'] < 0 else None
+        
+        return {
+            'total_value': total_value,
+            'daily_change': daily_change,
+            'daily_change_pct': daily_change_pct,
+            'total_dividend_income': total_dividend_income,
+            'average_dividend_yield': weighted_dividend_yield,
+            'diversification': diversification,
+            'top_performer': top_performer,
+            'worst_performer': worst_performer,
+            'stock_count': len(portfolio_data)
+        }
 
     def calculate_returns(self):
         total_return = 0
@@ -115,13 +251,23 @@ class Portfolio:
 
     def calculate_portfolio_value(self):
         portfolio_value = 0
+        
+        # Get all tickers for batch fetching
+        tickers = [stock['ticker'] for stock in self.stocks]
+        
+        # Batch fetch all stock info with caching
+        if tickers:
+            all_stock_info = get_multiple_stocks_cached(tickers)
+        else:
+            return 0
+        
         for stock in self.stocks:
             ticker = stock['ticker']
             quantity = stock['quantity']
         
             try:
-                # Fetch live stock price using yfinance
-                stock_info = yf.Ticker(ticker).info
+                # Get cached stock info
+                stock_info = all_stock_info.get(ticker, {})
                 current_price = stock_info.get('currentPrice', 0)
             
                 print(f"Ticker: {ticker}, Quantity: {quantity}, Current Price: {current_price}")
@@ -162,9 +308,9 @@ class Portfolio:
         conn.close()
 
     def _get_stock_data(self, ticker):
-        # Retrieve the stock data from the database
-        query = f"SELECT * FROM preprocessed_stock_data WHERE ticker = '{ticker}'"
-        stock_data = pd.read_sql_query(query, self.conn)
+        # Retrieve the stock data from the database using parameterized query
+        query = "SELECT * FROM preprocessed_stock_data WHERE ticker = ?"
+        stock_data = pd.read_sql_query(query, self.conn, params=[ticker])
         return stock_data
 
 def create_portfolio_table(db_name):

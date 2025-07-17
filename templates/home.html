@@ -1,50 +1,101 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Home</title>
-</head>
-<body>
-    <h1>Welcome to Justins Portfolio Tracker</h1>
-    <p>Start tracking your investment portfolio now!</p>
-    
-    <h2>User Information</h2>
-    <form action="{{ url_for('portfolio') }}" method="post">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required>
-        
-        <label for="age">Age:</label>
-        <input type="number" id="age" name="age" required>
-        
-        <label for="investment_amount">Investment Amount:</label>
-        <input type="number" id="investment_amount" name="investment_amount" required>
-        
-        <h3>Investment Goals</h3>
-        <label for="goal1">Goal 1:</label>
-        <input type="text" id="goal1" name="goal1" required>
-        
-        <label for="goal2">Goal 2:</label>
-        <input type="text" id="goal2" name="goal2" required>
-        
-        <label for="goal3">Goal 3:</label>
-        <input type="text" id="goal3" name="goal3" required>
+{% extends "base.html" %}
 
-        <h3>Target Goals</h3>
-        <label for="target_age">Target Age:</label>
-        <input type="number" id="target_age" name="target_age" required>
-        
-        <label for="target_portfolio_value">Target Portfolio Value:</label>
-        <input type="number" id="target_portfolio_value" name="target_portfolio_value" step="0.01" required>
-        
-        <label for="target_dividend_income">Target Dividend Income:</label>
-        <input type="number" id="target_dividend_income" name="target_dividend_income" step="0.01" required>
-        
-        <button type="submit">Submit</button>
-    </form>
-    <hr>
+{% block title %}Home - Portfolio Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Welcome to Your Investment Journey</h2>
+    </div>
+    <p class="mb-3">Get started by setting up your investment profile. This will help us provide personalized recommendations and track your progress towards your financial goals.</p>
     
-    <h2>Quick Access</h2>
-    <form action="{{ url_for('portfolio') }}" method="get">
-        <button type="submit">Go to Portfolio</button>
+    <form action="{{ url_for('portfolio') }}" method="post">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3>Personal Information</h3>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">Your Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="Enter your name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="age">Current Age</label>
+                    <input type="number" id="age" name="age" class="form-control" placeholder="Enter your age" min="18" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="investment_amount">Initial Investment Amount ($)</label>
+                    <input type="number" id="investment_amount" name="investment_amount" class="form-control" placeholder="Enter amount" min="0" step="0.01" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3>Investment Goals</h3>
+            </div>
+            
+            <p class="mb-2">What are your primary investment objectives? Be specific about what you want to achieve.</p>
+            
+            <div class="form-group">
+                <label for="goal1">Primary Goal</label>
+                <input type="text" id="goal1" name="goal1" class="form-control" placeholder="e.g., Save for retirement" maxlength="200" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="goal2">Secondary Goal</label>
+                <input type="text" id="goal2" name="goal2" class="form-control" placeholder="e.g., Generate passive income" maxlength="200" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="goal3">Additional Goal</label>
+                <input type="text" id="goal3" name="goal3" class="form-control" placeholder="e.g., Build wealth for family" maxlength="200" required>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3>Financial Targets</h3>
+            </div>
+            
+            <p class="mb-2">Set specific targets to measure your progress and success.</p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="target_age">Target Retirement Age</label>
+                    <input type="number" id="target_age" name="target_age" class="form-control" placeholder="Age you plan to retire" min="18" max="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="target_portfolio_value">Target Portfolio Value ($)</label>
+                    <input type="number" id="target_portfolio_value" name="target_portfolio_value" class="form-control" placeholder="Desired portfolio value" min="0" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="target_dividend_income">Target Annual Dividend Income ($)</label>
+                    <input type="number" id="target_dividend_income" name="target_dividend_income" class="form-control" placeholder="Desired yearly dividends" min="0" step="0.01" required>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Create My Portfolio</button>
+        </div>
     </form>
-</body>
-</html>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h3>Already Have a Profile?</h3>
+    </div>
+    
+    <p>Access your existing portfolio and continue tracking your investments.</p>
+    
+    <div class="text-center">
+        <a href="{{ url_for('portfolio') }}" class="btn btn-secondary">View My Portfolio</a>
+    </div>
+</div>
+{% endblock %}
