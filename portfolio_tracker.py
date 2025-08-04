@@ -4,11 +4,13 @@ from data_retrieval import get_stock_data
 from data_preprocessing import create_database_connection
 import yfinance as yf
 from cache import get_stock_info_cached, get_multiple_stocks_cached
+from db_manager import get_db_manager
 
 class Portfolio:
-    def __init__(self, db_name):
-        self.db_name = db_name
-        self.conn = create_database_connection(db_name)
+    def __init__(self, db_name=None):
+        # Use the new database manager
+        self.db_manager = get_db_manager()
+        self.db_name = db_name  # Keep for backward compatibility
         self.stocks = self._load_portfolio()
         self.portfolio_value = 0
         self.update_portfolio_value()
@@ -33,19 +35,9 @@ class Portfolio:
         except Exception as e:
             raise ValueError(f"Error validating ticker {ticker}: {str(e)}")
         
-        # Check if the stock is already in the portfolio
-        for stock in self.stocks:
-            if stock['ticker'] == ticker:
-                # Update the quantity if the stock is already in the portfolio
-                stock['quantity'] += quantity
-                self._save_portfolio()
-                self.update_portfolio_value()
-                return
-        
-        # Add the stock to the portfolio if it's not already present
-        stock = {'ticker': ticker, 'quantity': quantity}
-        self.stocks.append(stock)
-        self._save_portfolio()
+        # Add stock using database manager
+        self.db_manager.add_stock(ticker, quantity)
+        self.stocks = self._load_portfolio()
         self.update_portfolio_value()
         
         print(f"Added stock: {ticker}, Quantity: {quantity}")
@@ -58,8 +50,8 @@ class Portfolio:
         if not valid:
             raise ValueError(ticker)
         
-        self.stocks = [stock for stock in self.stocks if stock['ticker'] != ticker]
-        self._save_portfolio()
+        self.db_manager.remove_stock(ticker)
+        self.stocks = self._load_portfolio()
         self.update_portfolio_value()
 
     def get_portfolio_data(self):
@@ -239,11 +231,8 @@ class Portfolio:
         return total_dividend_yield
 
     def update_stock_quantity(self, ticker, new_quantity):
-        for stock in self.stocks:
-            if stock['ticker'] == ticker:
-                stock['quantity'] = new_quantity
-                break
-        self._save_portfolio()
+        self.db_manager.update_stock_quantity(ticker, new_quantity)
+        self.stocks = self._load_portfolio()
         self.update_portfolio_value()
 
     def update_portfolio_value(self):
@@ -286,52 +275,39 @@ class Portfolio:
         pass
 
     def _load_portfolio(self):
-        # Load the portfolio from the database
-        query = "SELECT * FROM portfolio"
-        portfolio_data = pd.read_sql_query(query, self.conn)
+        """Load the portfolio from the database"""
+        portfolio_data = self.db_manager.get_portfolio()
         stocks = []
-        for _, row in portfolio_data.iterrows():
+        for row in portfolio_data:
             stock = {'ticker': row['ticker'], 'quantity': row['quantity']}
             stocks.append(stock)
         return stocks
 
     def _save_portfolio(self):
-        # Save the updated portfolio to the database
-        conn = create_database_connection(self.db_name)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM portfolio")
-        for stock in self.stocks:
-            ticker = stock['ticker']
-            quantity = stock['quantity']
-            cursor.execute("INSERT INTO portfolio (ticker, quantity) VALUES (?, ?)", (ticker, quantity))
-        conn.commit()
-        conn.close()
+        """This method is no longer needed as database operations are atomic"""
+        pass
 
     def _get_stock_data(self, ticker):
-        # Retrieve the stock data from the database using parameterized query
-        query = "SELECT * FROM preprocessed_stock_data WHERE ticker = ?"
-        stock_data = pd.read_sql_query(query, self.conn, params=[ticker])
-        return stock_data
+        """Legacy method for backward compatibility"""
+        # If using old SQLite database directly
+        if self.db_name:
+            conn = create_database_connection(self.db_name)
+            query = "SELECT * FROM preprocessed_stock_data WHERE ticker = ?"
+            stock_data = pd.read_sql_query(query, conn, params=[ticker])
+            conn.close()
+            return stock_data
+        return pd.DataFrame()
 
-def create_portfolio_table(db_name):
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS portfolio (
-            ticker TEXT,
-            quantity INTEGER
-        )
-    """)
-    conn.commit()
-    conn.close()
+def create_portfolio_table(db_name=None):
+    """Create portfolio table using database manager"""
+    db_manager = get_db_manager()
+    db_manager.create_tables()
 
 def main():
-    db_name = 'stock_database.db'
+    # Create tables if they don't exist
+    create_portfolio_table()
 
-    # Create the portfolio table if it doesn't exist
-    create_portfolio_table(db_name)
-
-    portfolio = Portfolio(db_name)
+    portfolio = Portfolio()
 
     # Example usage
     portfolio.add_stock('AAPL', 10)

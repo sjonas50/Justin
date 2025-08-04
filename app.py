@@ -5,9 +5,9 @@ from database import save_user_profile, retrieve_user_profile
 from utils import validate_ticker, validate_quantity
 from config import get_config
 from cache import get_stock_info_cached
+from db_manager import get_db_manager
 import yfinance as yf
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 from functools import wraps
 
@@ -17,18 +17,26 @@ config = get_config()
 app = Flask(__name__)
 app.config.from_object(config)
 
-# Set up logging
+# Set up logging (console only for Vercel)
 if not app.debug:
-    if not os.path.exists('logs'):
-        os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/portfolio_tracker.log', maxBytes=10240, backupCount=10)
-    file_handler.setFormatter(logging.Formatter(
+    # Use console logging for production (Vercel)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
+    console_handler.setLevel(logging.INFO)
+    app.logger.addHandler(console_handler)
     app.logger.setLevel(logging.INFO)
     app.logger.info('Portfolio Tracker startup')
+
+# Initialize database tables on startup
+with app.app_context():
+    try:
+        db_manager = get_db_manager()
+        db_manager.create_tables()
+        app.logger.info('Database tables initialized successfully')
+    except Exception as e:
+        app.logger.error(f'Error initializing database: {e}')
 
 def handle_errors(f):
     """Decorator to handle errors in routes"""
@@ -73,7 +81,7 @@ def portfolio():
                               target_age, target_portfolio_value, target_dividend_income)
             
             # Create an instance of the Portfolio class
-            portfolio = Portfolio('stock_database.db')
+            portfolio = Portfolio()
             
             # Retrieve the user's portfolio data
             portfolio_data = portfolio.get_portfolio_data()
@@ -103,7 +111,7 @@ def portfolio():
             return redirect(url_for('home'))
     else:
         # Create an instance of the Portfolio class
-        portfolio = Portfolio('stock_database.db')
+        portfolio = Portfolio()
         
         # Retrieve the user's portfolio data
         portfolio_data = portfolio.get_portfolio_data()
@@ -163,7 +171,7 @@ def add_stock():
         target_dividend_income = float(request.form.get('target_dividend_income', 0))
         
         # Create an instance of the Portfolio class
-        portfolio = Portfolio('stock_database.db')
+        portfolio = Portfolio()
         
         # Add the stock to the user's portfolio (validation happens inside)
         portfolio.add_stock(ticker, quantity)
@@ -201,7 +209,7 @@ def remove_stock():
     target_dividend_income = float(request.form['target_dividend_income'])
     
     # Create an instance of the Portfolio class
-    portfolio = Portfolio('stock_database.db')
+    portfolio = Portfolio()
     
     # Remove the stock from the user's portfolio
     portfolio.remove_stock(ticker)
@@ -271,7 +279,7 @@ def generate_suggestions_route():
     target_dividend_income = float(target_dividend_income) if target_dividend_income else 0
     
     # Create an instance of the Portfolio class
-    portfolio = Portfolio('stock_database.db')
+    portfolio = Portfolio()
     
     # Retrieve the user's portfolio data
     portfolio_data = portfolio.get_portfolio_data()
@@ -287,7 +295,7 @@ def chat():
     user_input = request.form['user_input']
     
     # Retrieve the user's portfolio data
-    portfolio = Portfolio('stock_database.db')
+    portfolio = Portfolio()
     portfolio_data = portfolio.get_portfolio_data()
     
     # Generate a response using the Claude API
@@ -298,7 +306,7 @@ def chat():
 @app.route('/calculate_portfolio_value', methods=['GET'])
 def calculate_portfolio_value():
     # Create an instance of the Portfolio class
-    portfolio = Portfolio('stock_database.db')
+    portfolio = Portfolio()
     
     # Calculate the portfolio value
     portfolio_value = portfolio.portfolio_value
@@ -317,7 +325,7 @@ def suggestions():
         goal3 = request.form['goal3']
         
         # Create an instance of the Portfolio class
-        portfolio = Portfolio('stock_database.db')
+        portfolio = Portfolio()
         
         # Retrieve the user's portfolio data
         portfolio_data = portfolio.get_portfolio_data()
@@ -342,5 +350,5 @@ def internal_error(error):
 if __name__ == '__main__':
     # Run in production mode by default
     # Set FLASK_ENV=development for development mode
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=False)

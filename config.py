@@ -9,6 +9,7 @@ class Config:
     TESTING = False
     
     # Database settings
+    DATABASE_URL = os.environ.get('DATABASE_URL')
     DATABASE_NAME = 'stock_database.db'
     USER_PROFILE_DB = 'user_profiles.db'
     
